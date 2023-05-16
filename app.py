@@ -1,195 +1,123 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 3,
-   "id": "c12b38a9",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "# import all the app dependencies\n",
-    "import pandas as pd\n",
-    "import numpy as np\n",
-    "import sklearn\n",
-    "import streamlit as st\n",
-    "import joblib\n",
-    "import matplotlib\n",
-    "from IPython import get_ipython\n",
-    "from PIL import Image\n",
-    "\n",
-    "# load the encoder and model object\n",
-    "model = joblib.load(\"rta_model_deploy3.joblib\")\n",
-    "encoder = joblib.load(\"ordinal_encoder2.joblib\")\n",
-    "\n",
-    "st.set_option('deprecation.showPyplotGlobalUse', False)\n",
-    "\n",
-    "# 1: serious injury, 2: Slight injury, 0: Fatal Injury\n",
-    "\n",
-    "st.set_page_config(page_title=\"Accident Severity Prediction App\",\n",
-    "        page_icon=\"🚧\", layout=\"wide\")\n",
-    "\n",
-    "#creating option list for dropdown menu\n",
-    "options_day = ['Sunday', \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"]\n",
-    "options_age = ['18-30', '31-50', 'Over 51', 'Unknown', 'Under 18']\n",
-    "\n",
-    "# number of vehicle involved: range of 1 to 7\n",
-    "# number of casualties: range of 1 to 8\n",
-    "# hour of the day: range of 0 to 23\n",
-    "\n",
-    "options_types_collision = ['Vehicle with vehicle collision','Collision with roadside objects',\n",
-    "              'Collision with pedestrians','Rollover','Collision with animals',\n",
-    "              'Unknown','Collision with roadside-parked vehicles','Fall from vehicles',\n",
-    "              'Other','With Train']\n",
-    "\n",
-    "options_sex = ['Male','Female','Unknown']\n",
-    "\n",
-    "options_education_level = ['Junior high school','Elementary school','High school',\n",
-    "              'Unknown','Above high school','Writing & reading','Illiterate']\n",
-    "\n",
-    "options_services_year = ['Unknown','2-5yrs','Above 10yr','5-10yrs','1-2yr','Below 1yr']\n",
-    "\n",
-    "options_acc_area = ['Other', 'Office areas', 'Residential areas', ' Church areas',\n",
-    "    ' Industrial areas', 'School areas', ' Recreational areas',\n",
-    "    ' Outside rural areas', ' Hospital areas', ' Market areas',\n",
-    "    'Rural village areas', 'Unknown', 'Rural village areasOffice areas',\n",
-    "    'Recreational areas']\n",
-    "\n",
-    "# features list\n",
-    "features = ['Number_of_vehicles_involved','Number_of_casualties','Hour_of_Day','Type_of_collision','Age_band_of_driver','Sex_of_driver',\n",
-    "    'Educational_level','Service_year_of_vehicle','Day_of_week','Area_accident_occured']"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 4,
-   "id": "25fa6b1f",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stderr",
-     "output_type": "stream",
-     "text": [
-      "2023-05-16 11:53:46.903 \n",
-      "  \u001b[33m\u001b[1mWarning:\u001b[0m to view this Streamlit app on a browser, run it with the following\n",
-      "  command:\n",
-      "\n",
-      "    streamlit run C:\\Users\\HP\\anaconda3\\lib\\site-packages\\ipykernel_launcher.py [ARGUMENTS]\n"
-     ]
-    }
-   ],
-   "source": [
-    "# Give a title to web app using html syntax\n",
-    "st.markdown(\"<h1 style='text-align: center;'>Accident Severity Prediction App 🚧</h1>\", unsafe_allow_html=True)\n",
-    "\n",
-    "# define a main() function to take inputs from user in form based approach\n",
-    "def main():\n",
-    "    with st.form(\"road_traffic_severity_form\"):\n",
-    "       st.subheader(\"Please enter the following inputs:\")\n",
-    "        \n",
-    "       No_vehicles = st.slider(\"Number of vehicles involved:\",1,7, value=0, format=\"%d\")\n",
-    "       No_casualties = st.slider(\"Number of casualties:\",1,8, value=0, format=\"%d\")\n",
-    "       Hour = st.slider(\"Hour of the day:\", 0, 23, value=0, format=\"%d\")\n",
-    "       collision = st.selectbox(\"Type of collision:\",options=options_types_collision)\n",
-    "       Age_band = st.selectbox(\"Driver age group?:\", options=options_age)\n",
-    "       Sex = st.selectbox(\"Sex of the driver:\", options=options_sex)\n",
-    "       Education = st.selectbox(\"Education of driver:\",options=options_education_level)\n",
-    "       service_vehicle = st.selectbox(\"Service year of vehicle:\", options=options_services_year)\n",
-    "       Day_week = st.selectbox(\"Day of the week:\", options=options_day)\n",
-    "       Accident_area = st.selectbox(\"Area of accident:\", options=options_acc_area)\n",
-    "        \n",
-    "       submit = st.form_submit_button(\"Predict\")\n",
-    "\n",
-    "# encode using ordinal encoder and predict\n",
-    "    if submit:\n",
-    "       input_array = np.array([collision,\n",
-    "                  Age_band,Sex,Education,service_vehicle,\n",
-    "                  Day_week,Accident_area], ndmin=2)\n",
-    "        \n",
-    "       encoded_arr = list(encoder.transform(input_array).ravel())\n",
-    "        \n",
-    "       num_arr = [No_vehicles,No_casualties,Hour]\n",
-    "       pred_arr = np.array(num_arr + encoded_arr).reshape(1,-1)        \n",
-    "      \n",
-    "# predict the target from all the input features\n",
-    "       prediction = model.predict(pred_arr)\n",
-    "        \n",
-    "       if prediction == 0:\n",
-    "           st.write(f\"The severity prediction is fatal injury⚠\")\n",
-    "       elif prediction == 1:\n",
-    "           st.write(f\"The severity prediction is serious injury\")\n",
-    "       else:\n",
-    "           st.write(f\"The severity prediction is slight injury\")\n",
-    "        \n",
-    "       st.write(\"Developed By: Avi kumar Talaviya\")\n",
-    "       st.markdown(\"\"\"Reach out to me on: [Twitter](https://twitter.com/avikumart_) |\n",
-    "       [Linkedin](https://www.linkedin.com/in/avi-kumar-talaviya-739153147/) |\n",
-    "       [Kaggle](https://www.kaggle.com/avikumart) \n",
-    "       \"\"\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 5,
-   "id": "b4a67422",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "a,b,c = st.columns([0.2,0.6,0.2])\n",
-    "with b:\n",
-    " st.image(\"banner-picture.jpeg\", use_column_width=True)\n",
-    "\n",
-    "\n",
-    "# description about the project and code files       \n",
-    "st.subheader(\"🧾Description:\")\n",
-    "st.text(\"\"\"This data set is collected from Addis Ababa Sub-city police departments for master's research work. \n",
-    "The data set has been prepared from manual records of road traffic accidents of the year 2017-20. \n",
-    "All the sensitive information has been excluded during data encoding and finally it has 32 features and 12316 instances of the accident.\n",
-    "Then it is preprocessed and for identification of major causes of the accident by analyzing it using different machine learning classification algorithms.\n",
-    "\"\"\")\n",
-    "\n",
-    "st.markdown(\"Source of the dataset: [Click Here](https://www.narcis.nl/dataset/RecordID/oai%3Aeasy.dans.knaw.nl%3Aeasy-dataset%3A191591)\")\n",
-    "\n",
-    "st.subheader(\"🧭 Problem Statement:\")\n",
-    "st.text(\"\"\"The target feature is Accident_severity which is a multi-class variable. \n",
-    "The task is to classify this variable based on the other 31 features step-by-step by going through each day's task. \n",
-    "The metric for evaluation will be f1-score\n",
-    "\"\"\")\n",
-    "\n",
-    "st.markdown(\"Please find GitHub repository link of project: [Click Here](https://github.com/avikumart/Road-Traffic-Severity-Classification-Project)\")          \n",
-    "  \n",
-    "# run the main function        \n",
-    "if __name__ == '__main__':\n",
-    "  main()"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "31f2503c",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.10.9"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+# import all the app dependencies
+import pandas as pd
+import numpy as np
+import sklearn
+import streamlit as st
+import joblib
+import matplotlib
+from IPython import get_ipython
+from PIL import Image
+
+# load the encoder and model object
+model = joblib.load("rta_model_deploy3.joblib")
+encoder = joblib.load("ordinal_encoder2.joblib")
+
+st.set_option('deprecation.showPyplotGlobalUse', False)
+
+# 1: serious injury, 2: Slight injury, 0: Fatal Injury
+
+st.set_page_config(page_title="Accident Severity Prediction App",
+        page_icon="🚧", layout="wide")
+
+#creating option list for dropdown menu
+options_day = ['Sunday', "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+options_age = ['18-30', '31-50', 'Over 51', 'Unknown', 'Under 18']
+
+# number of vehicle involved: range of 1 to 7
+# number of casualties: range of 1 to 8
+# hour of the day: range of 0 to 23
+
+options_types_collision = ['Vehicle with vehicle collision','Collision with roadside objects',
+              'Collision with pedestrians','Rollover','Collision with animals',
+              'Unknown','Collision with roadside-parked vehicles','Fall from vehicles',
+              'Other','With Train']
+
+options_sex = ['Male','Female','Unknown']
+
+options_education_level = ['Junior high school','Elementary school','High school',
+              'Unknown','Above high school','Writing & reading','Illiterate']
+
+options_services_year = ['Unknown','2-5yrs','Above 10yr','5-10yrs','1-2yr','Below 1yr']
+
+options_acc_area = ['Other', 'Office areas', 'Residential areas', ' Church areas',
+    ' Industrial areas', 'School areas', ' Recreational areas',
+    ' Outside rural areas', ' Hospital areas', ' Market areas',
+    'Rural village areas', 'Unknown', 'Rural village areasOffice areas',
+    'Recreational areas']
+
+# features list
+features = ['Number_of_vehicles_involved','Number_of_casualties','Hour_of_Day','Type_of_collision','Age_band_of_driver','Sex_of_driver',
+    'Educational_level','Service_year_of_vehicle','Day_of_week','Area_accident_occured
+# Give a title to web app using html syntax
+st.markdown("<h1 style='text-align: center;'>Accident Severity Prediction App 🚧</h1>", unsafe_allow_html=True)
+
+# define a main() function to take inputs from user in form based approach
+def main():
+    with st.form("road_traffic_severity_form"):
+       st.subheader("Please enter the following inputs:")
+        
+       No_vehicles = st.slider("Number of vehicles involved:",1,7, value=0, format="%d")
+       No_casualties = st.slider("Number of casualties:",1,8, value=0, format="%d")
+       Hour = st.slider("Hour of the day:", 0, 23, value=0, format="%d")
+       collision = st.selectbox("Type of collision:",options=options_types_collision)
+       Age_band = st.selectbox("Driver age group?:", options=options_age)
+       Sex = st.selectbox("Sex of the driver:", options=options_sex)
+       Education = st.selectbox("Education of driver:",options=options_education_level)
+       service_vehicle = st.selectbox("Service year of vehicle:", options=options_services_year)
+       Day_week = st.selectbox("Day of the week:", options=options_day)
+       Accident_area = st.selectbox("Area of accident:", options=options_acc_area)
+        
+       submit = st.form_submit_button("Predict")
+
+# encode using ordinal encoder and predict
+    if submit:
+       input_array = np.array([collision,
+                  Age_band,Sex,Education,service_vehicle,
+                  Day_week,Accident_area], ndmin=2)
+        
+       encoded_arr = list(encoder.transform(input_array).ravel())
+        
+       num_arr = [No_vehicles,No_casualties,Hour]
+       pred_arr = np.array(num_arr + encoded_arr).reshape(1,-1)        
+      
+# predict the target from all the input features
+       prediction = model.predict(pred_arr)
+        
+       if prediction == 0:
+           st.write(f"The severity prediction is fatal injury⚠")
+       elif prediction == 1:
+           st.write(f"The severity prediction is serious injury")
+       else:
+           st.write(f"The severity prediction is slight injury")
+        
+       st.write("Developed By: Avi kumar Talaviya")
+       st.markdown("""Reach out to me on: [Twitter](https://twitter.com/avikumart_) |
+       [Linkedin](https://www.linkedin.com/in/avi-kumar-talaviya-739153147/) |
+       [Kaggle](https://www.kaggle.com/avikumart) 
+       """)
+a,b,c = st.columns([0.2,0.6,0.2])
+with b:
+ st.image("banner-picture.jpeg", use_column_width=True)
+
+
+# description about the project and code files       
+st.subheader("🧾Description:")
+st.text("""This data set is collected from Addis Ababa Sub-city police departments for master's research work. 
+The data set has been prepared from manual records of road traffic accidents of the year 2017-20. 
+All the sensitive information has been excluded during data encoding and finally it has 32 features and 12316 instances of the accident.
+Then it is preprocessed and for identification of major causes of the accident by analyzing it using different machine learning classification algorithms.
+""")
+
+st.markdown("Source of the dataset: [Click Here](https://www.narcis.nl/dataset/RecordID/oai%3Aeasy.dans.knaw.nl%3Aeasy-dataset%3A191591)")
+
+st.subheader("🧭 Problem Statement:")
+st.text("""The target feature is Accident_severity which is a multi-class variable. 
+The task is to classify this variable based on the other 31 features step-by-step by going through each day's task. 
+The metric for evaluation will be f1-score
+""")
+
+st.markdown("Please find GitHub repository link of project: [Click Here](https://github.com/avikumart/Road-Traffic-Severity-Classification-Project)")          
+  
+# run the main function        
+if __name__ == '__main__':
+  main()
